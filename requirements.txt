@@ -1,0 +1,2 @@
+pygithub==1.59.0
+pyyaml==6.0.1
