@@ -2,15 +2,19 @@
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.poetry.scripts]
+github-actions-cli = "gha_cli.cli:run"
+
 [tool.poetry]
 name = "github-actions-cli"
-packages = [
-    { include = "gha-cli" },
-]
-version = "1.0.0b1"
+version = "1.0.0b2"
 description = "GitHub Actions CLI - allows updating workflows, etc."
 readme = "README.md"
 keywords = ["GitHub Actions", "CLI"]
+packages = [
+    { include = "gha_cli" },
+]
+
 authors = [
     "Daniel Moran <daniel@moransoftware.ca>",
 ]
@@ -39,7 +43,7 @@ documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 [tool.poetry.dependencies]
 python = "^3.9"
 pygithub = "^1.59"
-pyyaml = { version = "^6.0", optional = true }
+pyyaml = "^6.0"
 
 [tool.poetry.dev-dependencies]
 poetry = "^1.5"

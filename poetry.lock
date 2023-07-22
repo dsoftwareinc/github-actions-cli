@@ -1025,7 +1025,7 @@ name = "pyyaml"
 version = "6.0.1"
 description = "YAML parser and emitter for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 files = [
     {file = "PyYAML-6.0.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:d858aa552c999bc8a8d57426ed01e40bef403cd8ccdd0fc5f6f04a00414cac2a"},
@@ -1650,4 +1650,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "52a7758d704b68361b7b0974956787365c826beb1352f69c11b12de26be47c10"
+content-hash = "68e3efc12e23d1423108924d470c0cd3d9db093a4f938bfbe6273a777be23d69"

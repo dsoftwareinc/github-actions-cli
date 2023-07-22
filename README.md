@@ -1,7 +1,8 @@
-GitHub Actions Utils
+GitHub Actions CLI
 ====================
 
 The purpose of this tool is to work with your GitHub Actions workflows in your repositories.
+It is complementary to the GitHub CLI.
 
 So far, three main flows are supported:
 
@@ -10,7 +11,7 @@ So far, three main flows are supported:
 Example:
 
 ```shell
-python ghautils.py cunla/fakeredis list-workflows
+github-actions-cli cunla/fakeredis list-workflows
 ```
 will return:
 
@@ -27,7 +28,7 @@ Given a repo and a workflow path, return all actions in the workflow.
 
 Example:
 ```shell
-python ghautils.py cunla/fakeredis list-actions .github/workflows/publish.yml
+github-actions-cli cunla/fakeredis list-actions .github/workflows/publish.yml
 ```
 
 Result
@@ -42,7 +43,7 @@ Show the latest versions of actions used in a repository workflow.
 
 Example:
 ```shell
-python ghautils.py cunla/fakeredis update
+github-actions-cli cunla/fakeredis update
 ```
 Result:
 ```text
@@ -56,10 +57,16 @@ Result:
   actions/checkout @ v3         ==> v3.5.3
 ```
 
+# Installation
+
+```shell
+pip install github-actions-cli
+```
+
 # Help messages
 
 ```text
-usage: ghautils.py [-h] [--github-token GITHUB_TOKEN] repo {list-workflows,list-actions,update} ...
+usage: github-actions-cli [-h] [--github-token GITHUB_TOKEN] repo {list-workflows,list-actions,update} ...
 
 positional arguments:
   repo                  Repository to analyze

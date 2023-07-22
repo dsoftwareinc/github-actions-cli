@@ -1,9 +1,15 @@
+#!/usr/bin/env python3
 import argparse
+import logging
 import os
 from typing import Optional, List, Set, Tuple, Dict
 
 import yaml
 from github import Github, Workflow
+
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger('github.Requester').setLevel(logging.WARNING)
+logger = logging.getLogger()
 
 
 def parse_args() -> argparse.Namespace:
@@ -14,8 +20,8 @@ def parse_args() -> argparse.Namespace:
         help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
     subcommands = parser.add_subparsers(dest='command', required=True)
     list_wfs_cmd_parser = subcommands.add_parser('list-workflows', help='List github workflows')
-    list_wfs_cmd_parser.add_argument('--local-only', action='store_true', dest='local_only',
-                                     help='Show only workflows stored in the repository')
+    list_wfs_cmd_parser.add_argument('--all', action='store_true', dest='external_workflows',
+                                     help='Show external workflows as well')
     list_actions_cmd_parser = subcommands.add_parser('list-actions', help='List actions in a workflow')
     list_actions_cmd_parser.add_argument('workflow_path', help='Workflow path')
     update_gha_cmd_parser = subcommands.add_parser('update', help='Update actions in github workflows')
@@ -33,12 +39,12 @@ class GithubActionsTools(object):
             raise ValueError('GITHUB_TOKEN must be set')
         self.client = Github(login_or_token=github_token)
 
-    def get_github_workflows(self, repo_name: str, local_only: bool = False) -> List[Workflow]:
+    def get_github_workflows(self, repo_name: str, external_workflows: bool = False) -> List[Workflow]:
         if repo_name in self.workflows:
             return list(self.workflows[repo_name].values())
         repo = self.client.get_repo(repo_name)
         workflows = list(repo.get_workflows())
-        if local_only:
+        if not external_workflows:
             workflows = list(filter(lambda item: item.path.startswith('.github/'), workflows))
         self.workflows[repo_name] = {wf.path: wf for wf in workflows}
         return workflows
