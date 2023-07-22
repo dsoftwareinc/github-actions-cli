@@ -1,0 +1,56 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "github-actions-cli"
+packages = [
+    { include = "gha-cli" },
+]
+version = "1.0.0b1"
+description = "GitHub Actions CLI - allows updating workflows, etc."
+readme = "README.md"
+keywords = ["GitHub Actions", "CLI"]
+authors = [
+    "Daniel Moran <daniel@moransoftware.ca>",
+]
+maintainers = [
+    "Daniel Moran <daniel@moransoftware.ca>",
+]
+license = "BSD-3-Clause"
+classifiers = [
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: BSD License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+]
+homepage = "https://github.com/dsoftwareinc/github-actions-cli"
+documentation = "https://github.com/dsoftwareinc/github-actions-cli"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/dsoftwareinc/github-actions-cli/issues"
+"Funding" = "https://github.com/sponsors/cunla"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pygithub = "^1.59"
+pyyaml = { version = "^6.0", optional = true }
+
+[tool.poetry.dev-dependencies]
+poetry = "^1.5"
+Flake8-pyproject = "^1.2"
+
+[tool.flake8]
+max-line-length = 119
+exclude = [
+    ".git",
+    ".github",
+    "__pycache__",
+    "dist",
+    "venv",
+]
