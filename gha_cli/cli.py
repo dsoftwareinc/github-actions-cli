@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import argparse
 import logging
 import os
-from typing import Optional, List, Set, Tuple, Dict
+from typing import Optional, List, Set, Tuple, Dict, Union
 
+import click
 import yaml
 from github import Github, Workflow
 
@@ -12,26 +12,9 @@ logging.getLogger('github.Requester').setLevel(logging.WARNING)
 logger = logging.getLogger()
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('repo', help='Repository to analyze')
-    parser.add_argument(
-        '--github-token', dest='github_token', default=None,
-        help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
-    subcommands = parser.add_subparsers(dest='command', required=True)
-    list_wfs_cmd_parser = subcommands.add_parser('list-workflows', help='List github workflows')
-    list_wfs_cmd_parser.add_argument('--all', action='store_true', dest='external_workflows',
-                                     help='Show external workflows as well')
-    list_actions_cmd_parser = subcommands.add_parser('list-actions', help='List actions in a workflow')
-    list_actions_cmd_parser.add_argument('workflow_path', help='Workflow path')
-    update_gha_cmd_parser = subcommands.add_parser('update', help='Update actions in github workflows')
-    update_gha_cmd_parser.add_argument("--dry-run", action='store_true', dest='dryrun', help='List updates only')
-    return parser.parse_args()
-
-
 class GithubActionsTools(object):
     workflows: dict[str, dict[str, Workflow]] = dict()  # repo_name -> [path -> workflow]
-    actions: dict[str, str] = dict()  # action_name -> latest_release_tag
+    actions_latest_release: dict[str, str] = dict()  # action_name@current_release -> latest_release_tag
 
     def __init__(self, github_token: Optional[str]):
         github_token = github_token or os.getenv('GITHUB_TOKEN')
@@ -39,25 +22,51 @@ class GithubActionsTools(object):
             raise ValueError('GITHUB_TOKEN must be set')
         self.client = Github(login_or_token=github_token)
 
-    def get_github_workflows(self, repo_name: str, external_workflows: bool = False) -> List[Workflow]:
+    def is_local_repo(self, repo_name: str) -> bool:
+        return os.path.exists(repo_name)
+
+    @staticmethod
+    def list_full_paths(path: str) -> set[str]:
+        return {os.path.join(path, file)
+                for file in os.listdir(path)
+                if file.endswith(('.yml', '.yaml'))}
+
+    def get_github_workflows(self, repo_name: str) -> Set[str]:
         if repo_name in self.workflows:
-            return list(self.workflows[repo_name].values())
+            return set(self.workflows[repo_name].keys())
+        # local
+        if self.is_local_repo(repo_name):
+            return self.list_full_paths(os.path.join(repo_name, '.github', 'workflows'))
+        # Remote
         repo = self.client.get_repo(repo_name)
-        workflows = list(repo.get_workflows())
-        if not external_workflows:
-            workflows = list(filter(lambda item: item.path.startswith('.github/'), workflows))
-        self.workflows[repo_name] = {wf.path: wf for wf in workflows}
-        return workflows
+        self.workflows[repo_name] = {
+            wf.path: wf
+            for wf in repo.get_workflows()
+            if wf.path.startswith('.github/')}
+        return set(self.workflows[repo_name].keys())
 
-    def get_workflow_actions(self, repo_name: str, workflow_path: str) -> Set[str]:
+    def _get_workflow_content(self, repo_name: str, workflow_path: str) -> Union[str, bytes]:
+        workflow_paths = self.get_github_workflows(repo_name)
 
-        self.get_github_workflows(repo_name)
-        if workflow_path not in self.workflows[repo_name]:
-            raise ValueError(f'f{workflow_path} not found in workflows for repository {repo_name}, '
-                             f'possible values: {self.workflows[repo_name].keys()}')
+        if self.is_local_repo(repo_name):
+            if not os.path.exists(workflow_path):
+                click.echo(
+                    f'f{workflow_path} not found in workflows for repository {repo_name}, '
+                    f'possible values: {workflow_paths}', err=True)
+            with open(workflow_path) as f:
+                return f.read()
+
+        if workflow_path not in workflow_paths:
+            click.echo(
+                f'f{workflow_path} not found in workflows for repository {repo_name}, '
+                f'possible values: {workflow_paths}', err=True)
         repo = self.client.get_repo(repo_name)
         workflow_content = repo.get_contents(workflow_path)
-        workflow = yaml.load(workflow_content.decoded_content, Loader=yaml.CLoader)
+        return workflow_content.decoded_content
+
+    def get_workflow_actions(self, repo_name: str, workflow_path: str) -> Set[str]:
+        workflow_content = self._get_workflow_content(repo_name, workflow_path)
+        workflow = yaml.load(workflow_content, Loader=yaml.CLoader)
         res = set()
         for job in workflow.get('jobs', dict()).values():
             for step in job.get('steps', list()):
@@ -78,44 +87,104 @@ class GithubActionsTools(object):
         return latest_release.tag_name if latest_release.tag_name != current_version else None
 
     def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[Tuple[str, str, Optional[str]]]]:
-        workflows = self.get_github_workflows(repo_name)
+        workflow_paths = self.get_github_workflows(repo_name)
         res = dict()
-        for workflow in workflows:
-            if not workflow.path.startswith('.github'):
-                continue
-            res[workflow.path] = list()
-            actions = self.get_workflow_actions(repo_name, workflow.path)
+        for path in workflow_paths:
+            res[path] = list()
+            actions = self.get_workflow_actions(repo_name, path)
             for action in actions:
                 if '@' not in action:
                     continue
                 action_name, curr_version = action.split('@')
-                latest = self.check_for_updates(action)
-                res[workflow.path].append((action_name, curr_version, latest))
+                if action not in self.actions_latest_release:
+                    latest = self.check_for_updates(action)
+                    self.actions_latest_release[action] = latest
+                else:
+                    latest = self.actions_latest_release[action]
+                res[path].append((action_name, curr_version, latest))
+        return res
+
+    def update_actions(
+            self, repo_name: str, workflow_path: str,
+            updates: List[Tuple[str, str, Optional[str]]],
+            commit_msg: str,
+    ) -> None:
+        workflow_content = self._get_workflow_content(repo_name, workflow_path)
+        if isinstance(workflow_content, bytes):
+            workflow_content = workflow_content.decode()
+        for update in updates:
+            if update[2] is None:
+                continue
+            current_action = f'{update[0]}@{update[1]}'
+            latest_action = f'{update[0]}@{update[2]}'
+            workflow_content = workflow_content.replace(current_action, latest_action)
+        self._update_workflow_content(repo_name, workflow_path, workflow_content, commit_msg)
+
+    def _update_workflow_content(
+            self, repo_name: str, workflow_path: str, workflow_content: str, commit_msg: str):
+        if self.is_local_repo(repo_name):
+            with open(workflow_path, 'w') as f:
+                f.write(workflow_content)
+                return
+        # remote
+        repo = self.client.get_repo(repo_name)
+        current_content = repo.get_contents(workflow_path)
+        res = repo.update_file(
+            workflow_path,
+            commit_msg,
+            workflow_content,
+            current_content.sha,
+        )
         return res
 
 
-def run():
-    args = parse_args()
-    gh = GithubActionsTools(args.github_token)
-    gh.check_for_updates('actions/checkout@v2')
-    if args.command == 'list-workflows':
-        workflows = gh.get_github_workflows(args.repo)
-        for workflow in workflows:
-            print(f'{workflow.path}:{workflow.name}')
-    elif args.command == 'list-actions':
-        actions = gh.get_workflow_actions(args.repo, args.workflow_path)
-        for action in actions:
-            print(action)
-    elif args.command == 'update':
-        action_versions = gh.get_repo_actions_latest(args.repo)
-        for wf in action_versions:
-            print(f'{wf}:')
-            for action in action_versions[wf]:
-                s = f'  {action[0]} @ {action[1]}'
-                if action[2]:
-                    s += f' \t==> {action[2]}'
-                print(s)
+@click.group()
+@click.option('-repo', default='.', help='Repository to analyze')
+@click.option('--github-token', default=os.getenv('GITHUB_TOKEN'),
+              help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
+@click.pass_context
+def cli(ctx, repo: str, github_token: str):
+    ctx.obj['gh'] = GithubActionsTools(github_token)
+    ctx.obj['repo'] = repo
+
+
+@cli.command(help='List actions in a workflow')
+@click.option('--dry-run', default=False, help='Do not update, list only')
+@click.option('-commit-msg', default='Update github-actions',
+              help='Commit msg, only relevant when remote repo')
+@click.pass_context
+def update_actions(ctx, dry_run: bool, commit_msg: str):
+    gh, repo = ctx.obj['gh'], ctx.obj['repo']
+    action_versions = gh.get_repo_actions_latest(repo)
+    for wf in action_versions:
+        click.echo(f'{wf}:')
+        for action in action_versions[wf]:
+            s = f'  {action[0]} @ {action[1]}'
+            if action[2]:
+                s += f' \t==> {action[2]}'
+            click.echo(s)
+    if dry_run:
+        return
+    for wf in action_versions:
+        gh.update_actions(repo, wf, action_versions[wf], commit_msg)
+
+
+@cli.command(help='List actions in a workflow')
+@click.argument('workflow')
+@click.pass_context
+def list_actions(ctx, workflow: str):
+    actions = ctx.obj['gh'].get_workflow_actions(ctx.obj['repo'], workflow)
+    for action in actions:
+        click.echo(action)
+
+
+@cli.command(help='List workflows in repository')
+@click.pass_context
+def list_workflows(ctx):
+    workflow_paths = ctx.obj['gh'].get_github_workflows(ctx.obj['repo'])
+    for path in workflow_paths:
+        click.echo(f'{path}')
 
 
 if __name__ == '__main__':
-    run()
+    cli(obj={})

@@ -3,11 +3,11 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-github-actions-cli = "gha_cli.cli:run"
+github-actions-cli = "gha_cli.cli:cli"
 
 [tool.poetry]
 name = "github-actions-cli"
-version = "1.0.0b2"
+version = "1.0.0b3"
 description = "GitHub Actions CLI - allows updating workflows, etc."
 readme = "README.md"
 keywords = ["GitHub Actions", "CLI"]
@@ -44,6 +44,7 @@ documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 python = "^3.9"
 pygithub = "^1.59"
 pyyaml = "^6.0"
+click = "^8.1.6"
 
 [tool.poetry.dev-dependencies]
 poetry = "^1.5"
