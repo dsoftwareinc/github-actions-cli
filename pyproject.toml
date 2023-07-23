@@ -7,7 +7,7 @@ github-actions-cli = "gha_cli.cli:cli"
 
 [tool.poetry]
 name = "github-actions-cli"
-version = "1.0.0b3"
+version = "1.0.0"
 description = "GitHub Actions CLI - allows updating workflows, etc."
 readme = "README.md"
 keywords = ["GitHub Actions", "CLI"]
@@ -44,7 +44,7 @@ documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 python = "^3.9"
 pygithub = "^1.59"
 pyyaml = "^6.0"
-click = "^8.1.6"
+click = "^8.1"
 
 [tool.poetry.dev-dependencies]
 poetry = "^1.5"
@@ -58,4 +58,5 @@ exclude = [
     "__pycache__",
     "dist",
     "venv",
+    ".venv"
 ]

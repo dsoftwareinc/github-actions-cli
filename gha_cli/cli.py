@@ -125,7 +125,9 @@ class GithubActionsTools(object):
         if self.is_local_repo(repo_name):
             with open(workflow_path, 'w') as f:
                 f.write(workflow_content)
-                return
+            click.secho(f'Updated workflow in {workflow_path}', fg='cyan')
+            return
+
         # remote
         repo = self.client.get_repo(repo_name)
         current_content = repo.get_contents(workflow_path)
@@ -135,6 +137,7 @@ class GithubActionsTools(object):
             workflow_content,
             current_content.sha,
         )
+        click.secho(f'Committed changes to workflow in {repo_name}:{workflow_path}', fg='cyan')
         return res
 
 
@@ -144,12 +147,13 @@ class GithubActionsTools(object):
               help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
 @click.pass_context
 def cli(ctx, repo: str, github_token: str):
+    ctx.ensure_object(dict)
     ctx.obj['gh'] = GithubActionsTools(github_token)
     ctx.obj['repo'] = repo
 
 
 @cli.command(help='List actions in a workflow')
-@click.option('--dry-run', default=False, help='Do not update, list only')
+@click.option('--dry-run', is_flag=True, default=False, help='Do not update, list only')
 @click.option('-commit-msg', default='Update github-actions',
               help='Commit msg, only relevant when remote repo')
 @click.pass_context
@@ -157,11 +161,14 @@ def update_actions(ctx, dry_run: bool, commit_msg: str):
     gh, repo = ctx.obj['gh'], ctx.obj['repo']
     action_versions = gh.get_repo_actions_latest(repo)
     for wf in action_versions:
-        click.echo(f'{wf}:')
+        click.secho(f'{wf}:', fg='blue')
         for action in action_versions[wf]:
-            s = f'  {action[0]} @ {action[1]}'
+            s = f'\t{action[0]:30} {action[1]:>5}'
             if action[2]:
-                s += f' \t==> {action[2]}'
+                old_version = action[1].split('.')
+                new_version = action[2].split('.')
+                color = 'red' if new_version[0] != old_version[0] else 'cyan'
+                s += ' ==> ' + click.style(f'{action[2]}', fg=color)
             click.echo(s)
     if dry_run:
         return
