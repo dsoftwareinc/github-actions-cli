@@ -149,9 +149,12 @@ You can provide it using GITHUB_TOKEN environment variable or --github-token opt
 
 
 @click.group(invoke_without_command=True)
-@click.option('-repo', default='.', help='Repository to analyze')
-@click.option('--github-token', default=os.getenv('GITHUB_TOKEN'),
-              help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
+@click.option(
+    '-repo', default='.', show_default=True, type=str,
+    help='Repository to analyze, can be a local directory or a {OWNER}/{REPO} format')
+@click.option(
+    '--github-token', default=os.getenv('GITHUB_TOKEN'), type=str, show_default=False,
+    help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
 @click.pass_context
 def cli(ctx, repo: str, github_token: Optional[str]):
     ctx.ensure_object(dict)
