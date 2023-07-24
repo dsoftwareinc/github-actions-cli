@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import logging
 import os
-from typing import Optional, List, Set, Tuple, Dict, Union
+from collections import namedtuple
+from typing import Optional, List, Set, Dict, Union
 
 import click
 import yaml
@@ -11,18 +12,18 @@ logging.basicConfig(level=logging.WARNING)
 logging.getLogger('github.Requester').setLevel(logging.WARNING)
 logger = logging.getLogger()
 
+ActionVersion = namedtuple('ActionVersion', ['name', 'current', 'latest'])
+
 
 class GithubActionsTools(object):
     workflows: dict[str, dict[str, Workflow]] = dict()  # repo_name -> [path -> workflow]
     actions_latest_release: dict[str, str] = dict()  # action_name@current_release -> latest_release_tag
 
-    def __init__(self, github_token: Optional[str]):
-        github_token = github_token or os.getenv('GITHUB_TOKEN')
-        if github_token is None:
-            raise ValueError('GITHUB_TOKEN must be set')
+    def __init__(self, github_token: str):
         self.client = Github(login_or_token=github_token)
 
-    def is_local_repo(self, repo_name: str) -> bool:
+    @staticmethod
+    def is_local_repo(repo_name: str) -> bool:
         return os.path.exists(repo_name)
 
     @staticmethod
@@ -86,7 +87,7 @@ class GithubActionsTools(object):
         latest_release = repo.get_latest_release()
         return latest_release.tag_name if latest_release.tag_name != current_version else None
 
-    def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[Tuple[str, str, Optional[str]]]]:
+    def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
         workflow_paths = self.get_github_workflows(repo_name)
         res = dict()
         for path in workflow_paths:
@@ -101,22 +102,22 @@ class GithubActionsTools(object):
                     self.actions_latest_release[action] = latest
                 else:
                     latest = self.actions_latest_release[action]
-                res[path].append((action_name, curr_version, latest))
+                res[path].append(ActionVersion(action_name, curr_version, latest))
         return res
 
     def update_actions(
             self, repo_name: str, workflow_path: str,
-            updates: List[Tuple[str, str, Optional[str]]],
+            updates: List[ActionVersion],
             commit_msg: str,
     ) -> None:
         workflow_content = self._get_workflow_content(repo_name, workflow_path)
         if isinstance(workflow_content, bytes):
             workflow_content = workflow_content.decode()
         for update in updates:
-            if update[2] is None:
+            if update.latest is None:
                 continue
-            current_action = f'{update[0]}@{update[1]}'
-            latest_action = f'{update[0]}@{update[2]}'
+            current_action = f'{update.name}@{update.current}'
+            latest_action = f'{update.name}@{update.latest}'
             workflow_content = workflow_content.replace(current_action, latest_action)
         self._update_workflow_content(repo_name, workflow_path, workflow_content, commit_msg)
 
@@ -141,39 +142,49 @@ class GithubActionsTools(object):
         return res
 
 
-@click.group()
+GITHUB_ACTION_NOT_PROVIDED_MSG = """GitHub connection token not provided.
+You might not be able to make the changes to remote repositories.
+You can provide it using GITHUB_TOKEN environment variable or --github-token option.
+"""
+
+
+@click.group(invoke_without_command=True)
 @click.option('-repo', default='.', help='Repository to analyze')
 @click.option('--github-token', default=os.getenv('GITHUB_TOKEN'),
               help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
 @click.pass_context
-def cli(ctx, repo: str, github_token: str):
+def cli(ctx, repo: str, github_token: Optional[str]):
     ctx.ensure_object(dict)
+    if not github_token:
+        click.secho(GITHUB_ACTION_NOT_PROVIDED_MSG, fg='red', err=True)
     ctx.obj['gh'] = GithubActionsTools(github_token)
     ctx.obj['repo'] = repo
+    if not ctx.invoked_subcommand:
+        ctx.invoke(update_actions)
 
 
-@cli.command(help='List actions in a workflow')
-@click.option('--dry-run', is_flag=True, default=False, help='Do not update, list only')
+@cli.command(help='Show actions required updates in repository workflows')
+@click.option('-u', '--update', is_flag=True, default=False, help='Do not update, list only')
 @click.option('-commit-msg', default='Update github-actions',
               help='Commit msg, only relevant when remote repo')
 @click.pass_context
-def update_actions(ctx, dry_run: bool, commit_msg: str):
+def update_actions(ctx, update: bool, commit_msg: str):
     gh, repo = ctx.obj['gh'], ctx.obj['repo']
-    action_versions = gh.get_repo_actions_latest(repo)
-    for wf in action_versions:
-        click.secho(f'{wf}:', fg='blue')
-        for action in action_versions[wf]:
-            s = f'\t{action[0]:30} {action[1]:>5}'
-            if action[2]:
-                old_version = action[1].split('.')
-                new_version = action[2].split('.')
+    workflow_action_versions = gh.get_repo_actions_latest(repo)
+    for workflow in workflow_action_versions:
+        click.secho(f'{workflow}:', fg='blue')
+        for action in workflow_action_versions[workflow]:
+            s = f'\t{action.name:30} {action.current:>5}'
+            if action.latest:
+                old_version = action.current.split('.')
+                new_version = action.latest.split('.')
                 color = 'red' if new_version[0] != old_version[0] else 'cyan'
-                s += ' ==> ' + click.style(f'{action[2]}', fg=color)
+                s += ' ==> ' + click.style(f'{action.latest}', fg=color)
             click.echo(s)
-    if dry_run:
+    if not update:
         return
-    for wf in action_versions:
-        gh.update_actions(repo, wf, action_versions[wf], commit_msg)
+    for workflow in workflow_action_versions:
+        gh.update_actions(repo, workflow, workflow_action_versions[workflow], commit_msg)
 
 
 @cli.command(help='List actions in a workflow')
