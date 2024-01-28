@@ -14,6 +14,8 @@ logger = logging.getLogger()
 
 ActionVersion = namedtuple('ActionVersion', ['name', 'current', 'latest'])
 
+FLAG_COMPARE_EXACT_VERSION = False
+
 
 class GithubActionsTools(object):
     workflows: dict[str, dict[str, Workflow]] = dict()  # repo_name -> [path -> workflow]
@@ -23,11 +25,33 @@ class GithubActionsTools(object):
         self.client = Github(login_or_token=github_token)
 
     @staticmethod
+    def compare_versions(v1: str, v2: str) -> int:
+        """Compare two versions, return 1 if v1 > v2, 0 if v1 == v2, -1 if v1 < v2
+        """
+        if v1.startswith('v'):
+            v1 = v1[1:]
+        if v2.startswith('v'):
+            v2 = v2[1:]
+        v1 = v1.split('.')
+        v2 = v2.split('.')
+        compare_count = max(len(v1), len(v2)) if FLAG_COMPARE_EXACT_VERSION else 1
+        for i in range(compare_count):
+            v1_i = int(v1[i]) if i < len(v1) else 0
+            v2_i = int(v2[i]) if i < len(v2) else 0
+            if v1_i > v2_i:
+                return 1
+            if v1_i < v2_i:
+                return -1
+        return 0
+
+    @staticmethod
     def is_local_repo(repo_name: str) -> bool:
-        return os.path.exists(repo_name)
+        return os.path.exists(repo_name) and os.path.exists(os.path.join(repo_name, '.git'))
 
     @staticmethod
     def list_full_paths(path: str) -> set[str]:
+        if not os.path.exists(path):
+            return set()
         return {os.path.join(path, file)
                 for file in os.listdir(path)
                 if file.endswith(('.yml', '.yaml'))}
@@ -38,6 +62,9 @@ class GithubActionsTools(object):
         # local
         if self.is_local_repo(repo_name):
             return self.list_full_paths(os.path.join(repo_name, '.github', 'workflows'))
+        if repo_name.startswith('.'):
+            click.secho(f'{repo_name} is not a local repo and does not start with owner/repo', fg='red', err=True)
+            exit(1)
         # Remote
         repo = self.client.get_repo(repo_name)
         self.workflows[repo_name] = {
@@ -85,7 +112,9 @@ class GithubActionsTools(object):
         repo_name, current_version = action_name.split('@')
         repo = self.client.get_repo(repo_name)
         latest_release = repo.get_latest_release()
-        return latest_release.tag_name if latest_release.tag_name != current_version else None
+        if GithubActionsTools.compare_versions(latest_release.tag_name, current_version):
+            return latest_release.tag_name
+        return None
 
     def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
         workflow_paths = self.get_github_workflows(repo_name)
@@ -150,16 +179,21 @@ You can provide it using GITHUB_TOKEN environment variable or --github-token opt
 
 @click.group(invoke_without_command=True)
 @click.option(
-    '-repo', default='.', show_default=True, type=str,
-    help='Repository to analyze, can be a local directory or a {OWNER}/{REPO} format')
+    '--repo', default='.', show_default=True, type=str,
+    help='Repository to analyze, can be a local directory or a {OWNER}/{REPO} format', )
 @click.option(
     '--github-token', default=os.getenv('GITHUB_TOKEN'), type=str, show_default=False,
     help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
+@click.option(
+    '--compare-exact-versions', is_flag=True, default=False,
+    help="Compare versions using all semantic and not only major versions, e.g., v1 will be upgraded to v1.2.3", )
 @click.pass_context
-def cli(ctx, repo: str, github_token: Optional[str]):
+def cli(ctx, repo: str, github_token: Optional[str], compare_exact_versions: bool):
     ctx.ensure_object(dict)
+    global FLAG_COMPARE_EXACT_VERSION
+    FLAG_COMPARE_EXACT_VERSION = compare_exact_versions
     if not github_token:
-        click.secho(GITHUB_ACTION_NOT_PROVIDED_MSG, fg='red', err=True)
+        click.secho(GITHUB_ACTION_NOT_PROVIDED_MSG, fg='yellow', err=True)
     ctx.obj['gh'] = GithubActionsTools(github_token)
     ctx.obj['repo'] = repo
     if not ctx.invoked_subcommand:
