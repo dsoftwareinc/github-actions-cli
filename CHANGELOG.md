@@ -1,3 +1,9 @@
+## v1.1.0
+
+### 🚀 Features
+
+- Compare only major versions of the actions by default.
+
 ## v1.0.1
 
 ### 🚀 Features
