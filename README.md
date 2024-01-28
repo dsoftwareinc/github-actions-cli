@@ -12,13 +12,13 @@ versions of the actions.
 
 ```text
 ./.github/workflows/test.yml:
-	actions/checkout                  v3 ==> v3.5.3
-	release-drafter/release-drafter    v5 ==> v5.24.0
-	actions/setup-python              v4 ==> v4.7.0
+	actions/checkout                  v2 ==> v3
+	release-drafter/release-drafter    v5
+	actions/setup-python              v4
 ./.github/workflows/publish.yml:
-	pypa/gh-action-pypi-publish    release/v1 ==> v1.8.8
-	actions/checkout                  v3 ==> v3.5.3
-	actions/setup-python              v4 ==> v4.7.0
+	pypa/gh-action-pypi-publish       v1
+	actions/checkout                  v2 ==> v3
+	actions/setup-python              v3 ==> v4
 ```
 
 # Supported use cases
@@ -27,11 +27,14 @@ versions of the actions.
 Usage: github-actions-cli [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  -repo TEXT           Repository to analyze, can be a local directory or a
-                       {OWNER}/{REPO} format  [default: .]
-  --github-token TEXT  GitHub token to use, by default will use GITHUB_TOKEN
-                       environment variable
-  --help               Show this message and exit.
+  --repo TEXT               Repository to analyze, can be a local directory or
+                            a {OWNER}/{REPO} format  [default: .]
+  --github-token TEXT       GitHub token to use, by default will use
+                            GITHUB_TOKEN environment variable
+  --compare-exact-versions  Compare versions using all semantic and not only
+                            major versions, e.g., v1 will be upgraded to
+                            v1.2.3
+  --help                    Show this message and exit.
 
 Commands:
   list-actions    List actions in a workflow
@@ -59,21 +62,26 @@ flag, it will create a commit updating the workflows to the latest.
 Parameters:
 
 ```text
-Usage: cli.py update-actions [OPTIONS]
+Usage: github-actions-cli update-actions [OPTIONS]
 
   Show actions required updates in repository workflows
 
 Options:
-  -u, --update      Do not update, list only
-  -commit-msg TEXT  Commit msg, only relevant when remote repo
+  -u, --update      Update actions in workflows (For remote repos: make
+                    changes and commit, for local repos: update files)
+  -commit-msg TEXT  Commit msg, only relevant when remote repo  [default:
+                    chore(ci):update actions]
+  --help            Show this message and exit.
 ```
 
-## `list-workflows` List all workflows path and name in a specified repository.
+If you want the check to compare exact versions and not only major versions, use the `--compare-exact-versions` flag.
+
+## `list-workflows` List all workflow paths and names in a specified repository.
 
 Example:
 
 ```shell
-github-actions-cli -repo cunla/fakeredis list-workflows
+github-actions-cli --repo cunla/fakeredis list-workflows
 ```
 
 will return:
@@ -90,7 +98,7 @@ Given a repo and a workflow path, return all actions in the workflow.
 Example:
 
 ```shell
-github-actions-cli -repo cunla/fakeredis list-actions .github/workflows/test.yml
+github-actions-cli --repo cunla/fakeredis list-actions .github/workflows/test.yml
 ```
 
 Result
