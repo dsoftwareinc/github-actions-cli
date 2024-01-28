@@ -201,9 +201,13 @@ def cli(ctx, repo: str, github_token: Optional[str], compare_exact_versions: boo
 
 
 @cli.command(help='Show actions required updates in repository workflows')
-@click.option('-u', '--update', is_flag=True, default=False, help='Do not update, list only')
-@click.option('-commit-msg', default='Update github-actions',
-              help='Commit msg, only relevant when remote repo')
+@click.option(
+    '-u', '--update', is_flag=True, default=False,
+    help='Update actions in workflows (For remote repos: make changes and commit, for local repos: update files',)
+@click.option(
+    '-commit-msg',
+    default='chore(ci):update actions', type=str, show_default=True,
+    help='Commit msg, only relevant when remote repo')
 @click.pass_context
 def update_actions(ctx, update: bool, commit_msg: str):
     gh, repo = ctx.obj['gh'], ctx.obj['repo']
