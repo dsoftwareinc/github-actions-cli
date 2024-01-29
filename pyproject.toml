@@ -4,6 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 github-actions-cli = "gha_cli.cli:cli"
+github-scanner = "gha_cli.scanner:cli"
 
 [tool.poetry]
 name = "github-actions-cli"
@@ -47,6 +48,7 @@ pygithub = "^1.59"
 pyyaml = "^6.0"
 click = "^8.1"
 cffi = "^1.16"
+coloredlogs = "^15.0.1"
 
 [tool.poetry.dev-dependencies]
 poetry = "^1.5"
