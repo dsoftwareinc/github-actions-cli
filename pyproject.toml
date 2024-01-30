@@ -44,7 +44,7 @@ documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-pygithub = "^1.59"
+pygithub = "^2.2"
 pyyaml = "^6.0"
 click = "^8.1"
 cffi = "^1.16"
