@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 github-actions-cli = "gha_cli.cli:cli"
-github-scanner = "gha_cli.scanner:cli"
+#github-scanner = "gha_cli.scanner:cli"
 
 [tool.poetry]
 name = "github-actions-cli"
