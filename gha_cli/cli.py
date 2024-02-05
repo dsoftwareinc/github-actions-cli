@@ -221,10 +221,15 @@ def update_actions(ctx, update: bool, commit_msg: str):
     gh, repo = ctx.obj['gh'], ctx.obj['repo']
     workflow_names = (gh.get_repo_workflow_names(repo))
     workflow_action_versions = gh.get_repo_actions_latest(repo)
+    max_action_name_length, max_version_length = 0, 0
+    for workflow_path, actions in workflow_action_versions.items():
+        for action in workflow_action_versions[workflow_path]:
+            max_action_name_length = max(max_action_name_length, len(action.name))
+            max_version_length = max(max_version_length, len(action.current))
     for workflow_path, workflow_name in workflow_names.items():
         click.secho(f'{workflow_path} ({click.style(workflow_name, fg="bright_cyan")}):', fg='bright_blue')
         for action in workflow_action_versions[workflow_path]:
-            s = f'\t{action.name:30} {action.current:>5}'
+            s = f'\t{action.name:<{max_action_name_length + 5}} {action.current:>{max_version_length + 2}}'
             if action.latest:
                 old_version = action.current.split('.')
                 new_version = action.latest.split('.')
