@@ -1,20 +1,14 @@
 import logging
-import os
 from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
-from typing import List, Optional, Set
+from typing import List
 
 import click
-import coloredlogs
-from github import Github
 from github.Organization import Organization
 from github.PaginatedList import PaginatedList
 from github.Repository import Repository
 
-logging.basicConfig(level=logging.INFO)
-THIS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)))
-
-coloredlogs.install(level='DEBUG')
+logger = logging.getLogger()
 
 
 @dataclass
@@ -93,28 +87,7 @@ class Org(CsvClass):
         )
 
 
-GITHUB_ACTION_NOT_PROVIDED_MSG = """GitHub connection token not provided.
-You might not be able to make the changes to remote repositories.
-You can provide it using GITHUB_TOKEN environment variable or --github-token option.
-"""
-
-
-@click.group(invoke_without_command=True)
-@click.option(
-    '--github-token', default=os.getenv('GITHUB_TOKEN'), type=str, show_default=False,
-    help='GitHub token to use, by default will use GITHUB_TOKEN environment variable')
-@click.pass_context
-def cli(ctx, github_token: Optional[str]):
-    ctx.ensure_object(dict)
-    if not github_token:
-        click.secho(GITHUB_ACTION_NOT_PROVIDED_MSG, fg='yellow', err=True)
-        exit(1)
-    ctx.obj['gh'] = Github(github_token)
-    if not ctx.invoked_subcommand:
-        ctx.invoke(analyze_orgs)
-
-
-def _print_data(orgs: List[Org]):
+def print_orgs_as_csvs(orgs: List[Org]):
     if len(orgs) == 0:
         return
 
@@ -123,33 +96,9 @@ def _print_data(orgs: List[Org]):
         click.echo(org.csv_str())
 
     for org in orgs:
-        logging.info(f'Analyzing repos for {org.name}')
+        logger.info(f'Analyzing repos for {org.name}')
         if len(org.repositories) == 0:
             continue
         click.echo(org.repositories[0].csv_header())
         for repo in org.repositories:
             click.echo(repo.csv_str())
-
-
-@cli.command(help='Analyze organizations')
-@click.option('-x', '--exclude', multiple=True, default=[], help='Exclude orgs')
-@click.pass_context
-def analyze_orgs(ctx, exclude: Set[str] = None):
-    gh_client: Github = ctx.obj['gh']
-    exclude = exclude or {}
-    exclude = set(exclude)
-    current_user = gh_client.get_user()
-    gh_orgs: PaginatedList[Organization] = current_user.get_orgs()
-    logging.info(f'Analyzing {gh_orgs.totalCount} organizations')
-    orgs: List[Org] = []
-    for gh_org in gh_orgs:
-        if gh_org.login in exclude:
-            continue
-        org = Org.from_github_org(gh_org)
-        orgs.append(org)
-    _print_data(orgs)
-
-
-if __name__ == '__main__':
-    # print(Org(name='test', repositories=[], members_count=1, teams_count=1).csv_header())
-    cli(obj={})

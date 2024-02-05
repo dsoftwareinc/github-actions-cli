@@ -5,11 +5,15 @@ from collections import namedtuple
 from typing import Optional, List, Set, Dict, Union, Any
 
 import click
+import coloredlogs
 import yaml
 from github import Github, Workflow
+from github.Organization import Organization
+from github.PaginatedList import PaginatedList
 
-logging.basicConfig(level=logging.WARNING)
-logging.getLogger('github.Requester').setLevel(logging.WARNING)
+from gha_cli.scanner import Org, print_orgs_as_csvs
+
+coloredlogs.install(level='INFO')
 logger = logging.getLogger()
 
 ActionVersion = namedtuple('ActionVersion', ['name', 'current', 'latest'])
@@ -186,6 +190,8 @@ You can provide it using GITHUB_TOKEN environment variable or --github-token opt
 
 
 @click.group(invoke_without_command=True)
+@click.option('-v', '--verbose', count=True,
+              help="Increase verbosity, can be used multiple times to increase verbosity")
 @click.option(
     '--repo', default='.', show_default=True, type=str,
     help='Repository to analyze, can be a local directory or a {OWNER}/{REPO} format', )
@@ -196,7 +202,11 @@ You can provide it using GITHUB_TOKEN environment variable or --github-token opt
     '--compare-exact-versions', is_flag=True, default=False,
     help="Compare versions using all semantic and not only major versions, e.g., v1 will be upgraded to v1.2.3", )
 @click.pass_context
-def cli(ctx, repo: str, github_token: Optional[str], compare_exact_versions: bool):
+def cli(ctx, verbose: int, repo: str, github_token: Optional[str], compare_exact_versions: bool):
+    if verbose == 1:
+        coloredlogs.install(level='INFO')
+    if verbose > 1:
+        coloredlogs.install(level='DEBUG')
     ctx.ensure_object(dict)
     global FLAG_COMPARE_EXACT_VERSION
     FLAG_COMPARE_EXACT_VERSION = compare_exact_versions
@@ -257,6 +267,25 @@ def list_workflows(ctx):
     workflow_paths = (ctx.obj['gh'].get_repo_workflow_names(ctx.obj['repo']))
     for path, name in workflow_paths.items():
         click.echo(f'{path} - {name}')
+
+
+@cli.command(help='Analyze organizations')
+@click.option('-x', '--exclude', multiple=True, default=[], help='Exclude orgs')
+@click.pass_context
+def analyze_orgs(ctx, exclude: Set[str] = None):
+    gh_client: Github = ctx.obj['gh'].client
+    exclude = exclude or {}
+    exclude = set(exclude)
+    current_user = gh_client.get_user()
+    gh_orgs: PaginatedList[Organization] = current_user.get_orgs()
+    logging.info(f'Analyzing {gh_orgs.totalCount} organizations')
+    orgs: List[Org] = []
+    for gh_org in gh_orgs:
+        if gh_org.login in exclude:
+            continue
+        org = Org.from_github_org(gh_org)
+        orgs.append(org)
+    print_orgs_as_csvs(orgs)
 
 
 if __name__ == '__main__':

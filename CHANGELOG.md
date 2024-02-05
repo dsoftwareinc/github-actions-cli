@@ -1,3 +1,10 @@
+## v1.1.1
+
+### 🚀 Features
+
+- Format output string to be more readable.
+- Scan and analyze GitHub organizations and repositories.
+
 ## v1.1.0
 
 ### 🚀 Features
