@@ -7,7 +7,7 @@ from typing import Optional, List, Set, Dict, Union, Any
 import click
 import coloredlogs
 import yaml
-from github import Github, Workflow
+from github import Github, Workflow, UnknownObjectException
 from github.Organization import Organization
 from github.PaginatedList import PaginatedList
 
@@ -77,10 +77,15 @@ class GithubActionsTools(object):
         if '@' not in action_name:
             return None
         repo_name, current_version = action_name.split('@')
+        logging.debug(f'Checking for updates for {action_name}: Getting repo {repo_name}')
         repo = self.client.get_repo(repo_name)
-        latest_release = repo.get_latest_release()
-        if compare_versions(latest_release.tag_name, current_version):
-            return latest_release.tag_name
+        logging.debug(f'Getting latest release for repository: {repo_name}')
+        try:
+            latest_release = repo.get_latest_release()
+            if compare_versions(latest_release.tag_name, current_version):
+                return latest_release.tag_name
+        except UnknownObjectException:
+            logging.warning(f'No releases found for repository: {repo_name}')
         return None
 
     def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
