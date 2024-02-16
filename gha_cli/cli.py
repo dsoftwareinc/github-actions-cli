@@ -30,14 +30,17 @@ def compare_versions(v1: str, v2: str) -> int:
         v2 = v2[1:]
     v1 = v1.split('.')
     v2 = v2.split('.')
-    compare_count = max(len(v1), len(v2)) if FLAG_COMPARE_EXACT_VERSION else 1
-    for i in range(compare_count):
-        v1_i = int(v1[i]) if i < len(v1) else 0
-        v2_i = int(v2[i]) if i < len(v2) else 0
-        if v1_i > v2_i:
-            return 1
-        if v1_i < v2_i:
-            return -1
+    try:
+        compare_count = max(len(v1), len(v2)) if FLAG_COMPARE_EXACT_VERSION else 1
+        for i in range(compare_count):
+            v1_i = int(v1[i]) if i < len(v1) else 0
+            v2_i = int(v2[i]) if i < len(v2) else 0
+            if v1_i > v2_i:
+                return 1
+            if v1_i < v2_i:
+                return -1
+    except ValueError:
+        logging.warning(f'Could not compare versions {v1} and {v2}')
     return 0
 
 
@@ -78,11 +81,16 @@ class GithubActionsTools(object):
             return None
         repo_name, current_version = action_name.split('@')
         logging.debug(f'Checking for updates for {action_name}: Getting repo {repo_name}')
+        if repo_name in self.actions_latest_release:
+            latest_release = self.actions_latest_release[repo_name]
+            logging.debug(f"Found in cache {repo_name}: {latest_release}")
+            return latest_release if compare_versions(latest_release, current_version) else None
         repo = self.client.get_repo(repo_name)
         logging.debug(f'Getting latest release for repository: {repo_name}')
         try:
             latest_release = repo.get_latest_release()
             if compare_versions(latest_release.tag_name, current_version):
+                self.actions_latest_release[repo_name] = latest_release.tag_name
                 return latest_release.tag_name
         except UnknownObjectException:
             logging.warning(f'No releases found for repository: {repo_name}')
