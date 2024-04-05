@@ -45,7 +45,7 @@ def compare_versions(v1: str, v2: str) -> int:
 
 
 class GithubActionsTools(object):
-    _wf_cache: dict[str, dict[str, Union[Workflow, Any]]] = dict()  # repo_name -> [path -> workflow/yaml]
+    _wf_cache: dict[str, dict[str, Any]] = dict()  # repo_name -> [path -> workflow/yaml]
     actions_latest_release: dict[str, str] = dict()  # action_name@current_release -> latest_release_tag
 
     def __init__(self, github_token: str):
