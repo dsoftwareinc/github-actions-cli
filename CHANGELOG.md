@@ -1,3 +1,9 @@
+## v1.1.6
+
+### 🐛 Bug Fixes
+
+- fix: Workflow path is enumerated, but does not exist any longer #4 @amotl
+
 ## v1.1.1
 
 ### 🚀 Features
