@@ -118,9 +118,12 @@ class GithubActionsTools(object):
         workflow_paths = self._get_github_workflow_filenames(repo_name)
         res = dict()
         for path in workflow_paths:
-            content = self._get_workflow_file_content(repo_name, path)
-            yaml_content = yaml.load(content, Loader=yaml.CLoader)
-            res[path] = yaml_content.get('name', path)
+            try:
+                content = self._get_workflow_file_content(repo_name, path)
+                yaml_content = yaml.load(content, Loader=yaml.CLoader)
+                res[path] = yaml_content.get('name', path)
+            except FileNotFoundError as ex:
+                logging.warning(ex)
         return res
 
     def update_actions(
@@ -192,7 +195,10 @@ class GithubActionsTools(object):
                 f'f{workflow_path} not found in workflows for repository {repo_name}, '
                 f'possible values: {workflow_paths}', err=True)
         repo = self.client.get_repo(repo_name)
-        workflow_content = repo.get_contents(workflow_path)
+        try:
+            workflow_content = repo.get_contents(workflow_path)
+        except UnknownObjectException:
+            raise FileNotFoundError(f'Workflow not found in repository: {repo_name}, path: {workflow_path}')
         return workflow_content.decoded_content
 
 
