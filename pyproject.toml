@@ -50,12 +50,13 @@ click = "^8.1"
 cffi = "^1.16"
 coloredlogs = "^15.0.1"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 poetry = "^1.5"
-Flake8-pyproject = "^1.2"
+ruff = "^0.11"
 
-[tool.flake8]
-max-line-length = 119
+
+[tool.ruff]
+line-length = 120
 exclude = [
     ".git",
     ".github",
@@ -64,3 +65,10 @@ exclude = [
     "venv",
     ".venv"
 ]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+

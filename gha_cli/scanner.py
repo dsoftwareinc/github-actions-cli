@@ -16,14 +16,13 @@ class CsvClass:
     IGNORE_FIELDS = []
 
     def get_attributes(self) -> List[str]:
-        return [a.name for a in fields(self.__class__)
-                if a.name not in self.IGNORE_FIELDS]
+        return [a.name for a in fields(self.__class__) if a.name not in self.IGNORE_FIELDS]
 
     def csv_header(self) -> str:
-        return ','.join(self.get_attributes())
+        return ",".join(self.get_attributes())
 
     def csv_str(self) -> str:
-        return ','.join([str(getattr(self, attr)) for attr in self.get_attributes()])
+        return ",".join([str(getattr(self, attr)) for attr in self.get_attributes()])
 
 
 @dataclass
@@ -61,7 +60,9 @@ class Repo(CsvClass):
 
 @dataclass
 class Org(CsvClass):
-    IGNORE_FIELDS = ['repositories', ]
+    IGNORE_FIELDS = [
+        "repositories",
+    ]
     name: str
     repositories: List[Repo]
     members_count: int
@@ -96,7 +97,7 @@ def print_orgs_as_csvs(orgs: List[Org]):
         click.echo(org.csv_str())
 
     for org in orgs:
-        logger.info(f'Analyzing repos for {org.name}')
+        logger.info(f"Analyzing repos for {org.name}")
         if len(org.repositories) == 0:
             continue
         click.echo(org.repositories[0].csv_header())
