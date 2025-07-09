@@ -8,7 +8,7 @@ github-actions-cli = "gha_cli.cli:cli"
 
 [tool.poetry]
 name = "github-actions-cli"
-version = "1.1.6"
+version = "1.2.0"
 description = "GitHub Actions CLI - allows updating workflows, etc."
 readme = "README.md"
 keywords = ["GitHub Actions", "CLI"]
@@ -28,8 +28,6 @@ classifiers = [
     'License :: OSI Approved :: BSD License',
     'Operating System :: OS Independent',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
@@ -43,17 +41,16 @@ documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 "Funding" = "https://github.com/sponsors/cunla"
 
 [tool.poetry.dependencies]
-python = "^3.9"
-pygithub = "^2.2"
-pyyaml = "^6.0"
-click = "^8.1"
-cffi = "^1.16"
-coloredlogs = "^15.0.1"
+python = "^3.10"
+pygithub = "^2.6"
+pyyaml = "^6"
+click = "^8.2"
+cffi = "^1.17.1"
+coloredlogs = "^15"
 
 [tool.poetry.group.dev.dependencies]
-poetry = "^1.5"
-ruff = "^0.11"
-
+poetry = "^2.1"
+ruff = "^0.12"
 
 [tool.ruff]
 line-length = 120
