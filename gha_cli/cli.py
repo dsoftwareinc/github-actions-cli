@@ -21,14 +21,17 @@ ActionVersion = namedtuple("ActionVersion", ["name", "current", "latest"])
 FLAG_COMPARE_EXACT_VERSION = False
 
 
-def compare_versions(v1: str, v2: str) -> int:
+def compare_versions(orig_v1: str, orig_v2: str, major_only: bool) -> int:
     """Compare two versions, return 1 if v1 > v2, 0 if v1 == v2, -1 if v1 < v2"""
-    if v1.startswith("v"):
-        v1 = v1[1:]
-    if v2.startswith("v"):
-        v2 = v2[1:]
-    v1 = v1.split(".")
-    v2 = v2.split(".")
+    if orig_v1.startswith("v"):
+        orig_v1 = orig_v1[1:]
+    if orig_v2.startswith("v"):
+        orig_v2 = orig_v2[1:]
+    v1 = orig_v1.split(".")
+    v2 = orig_v2.split(".")
+    if major_only:
+        v1 = [v1[0]]
+        v2 = [v2[0]]
     try:
         compare_count = max(len(v1), len(v2)) if FLAG_COMPARE_EXACT_VERSION else 1
         for i in range(compare_count):
@@ -39,8 +42,14 @@ def compare_versions(v1: str, v2: str) -> int:
             if v1_i < v2_i:
                 return -1
     except ValueError:
-        logging.warning(f"Could not compare versions {v1} and {v2}")
+        logging.warning(f"Could not compare versions {orig_v1} and {orig_v2}")
     return 0
+
+
+def _fix_version(tag_name: str, major_only: bool) -> str:
+    if major_only:
+        return tag_name.split(".")[0]
+    return tag_name
 
 
 class GithubActionsTools(object):
@@ -70,7 +79,7 @@ class GithubActionsTools(object):
                     res.add(step["uses"])
         return res
 
-    def check_for_updates(self, action_name: str) -> Optional[str]:
+    def check_for_updates(self, action_name: str, major_only: bool) -> Optional[str]:
         """Check whether an action has an update, and return the latest version if it does syntax for uses:
         https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_iduses
         """
@@ -81,19 +90,19 @@ class GithubActionsTools(object):
         if repo_name in self.actions_latest_release:
             latest_release = self.actions_latest_release[repo_name]
             logging.debug(f"Found in cache {repo_name}: {latest_release}")
-            return latest_release if compare_versions(latest_release, current_version) else None
+            return latest_release if compare_versions(latest_release, current_version, major_only) else None
         repo = self.client.get_repo(repo_name)
         logging.debug(f"Getting latest release for repository: {repo_name}")
         try:
             latest_release = repo.get_latest_release()
-            if compare_versions(latest_release.tag_name, current_version):
-                self.actions_latest_release[repo_name] = latest_release.tag_name
+            if compare_versions(latest_release.tag_name, current_version, major_only):
+                self.actions_latest_release[repo_name] = _fix_version(latest_release.tag_name, major_only)
                 return latest_release.tag_name
         except UnknownObjectException:
             logging.warning(f"No releases found for repository: {repo_name}")
         return None
 
-    def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
+    def get_repo_actions_latest(self, repo_name: str, major_only: bool) -> Dict[str, List[ActionVersion]]:
         workflow_paths = self._get_github_workflow_filenames(repo_name)
         res = dict()
         for path in workflow_paths:
@@ -104,7 +113,7 @@ class GithubActionsTools(object):
                     continue
                 action_name, curr_version = action.split("@")
                 if action not in self.actions_latest_release:
-                    latest = self.check_for_updates(action)
+                    latest = self.check_for_updates(action, major_only)
                     self.actions_latest_release[action] = latest
                 else:
                     latest = self.actions_latest_release[action]
@@ -124,11 +133,11 @@ class GithubActionsTools(object):
         return res
 
     def update_actions(
-        self,
-        repo_name: str,
-        workflow_path: str,
-        updates: List[ActionVersion],
-        commit_msg: str,
+            self,
+            repo_name: str,
+            workflow_path: str,
+            updates: List[ActionVersion],
+            commit_msg: str,
     ) -> None:
         workflow_content = self._get_workflow_file_content(repo_name, workflow_path)
         if isinstance(workflow_content, bytes):
@@ -263,11 +272,18 @@ def cli(ctx, verbose: int, repo: str, github_token: Optional[str], compare_exact
     show_default=True,
     help="Commit msg, only relevant when remote repo",
 )
+@click.option(
+    "-m",
+    "--major-only",
+    is_flag=True,
+    default=False,
+    help="Compare major versions only, e.g., v1.2.3 will not be upgraded to v1.2.4 but to v2",
+)
 @click.pass_context
-def update_actions(ctx, update: bool, commit_msg: str):
+def update_actions(ctx, update: bool, commit_msg: str, major_only: bool) -> None:
     gh, repo = ctx.obj["gh"], ctx.obj["repo"]
     workflow_names = gh.get_repo_workflow_names(repo)
-    workflow_action_versions = gh.get_repo_actions_latest(repo)
+    workflow_action_versions = gh.get_repo_actions_latest(repo, major_only)
     max_action_name_length, max_version_length = 0, 0
     for workflow_path, actions in workflow_action_versions.items():
         for action in workflow_action_versions[workflow_path]:
