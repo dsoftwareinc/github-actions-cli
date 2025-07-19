@@ -1,3 +1,6 @@
+## v1.2.2
+### 🐛 Bug Fixes
+- fix: Update versions
 ## v1.2.1
 
 ### 🚀 Features

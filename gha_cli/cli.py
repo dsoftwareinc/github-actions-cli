@@ -34,6 +34,14 @@ class GithubActionsTools(object):
         self.client = Github(login_or_token=github_token)
         self._update_major_version_only = update_major_version_only
 
+    def _get_repo(self, repo_name: str) -> Repository:
+        """Get a repository from github client"""
+        try:
+            return self.client.get_repo(repo_name)
+        except UnknownObjectException:
+            logging.error(f"Repository {repo_name} not found")
+            raise ValueError(f"Repository {repo_name} not found")
+
     def _fix_version(self, tag_name: str) -> str:
         if self._update_major_version_only:
             return tag_name.split(".")[0]
@@ -77,10 +85,13 @@ class GithubActionsTools(object):
                 logging.debug(f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer")
                 if latest_release[1] > datetime.now():
                     return latest_release[0]
-            return latest_release if self._compare_versions(latest_release[0], current_version) > 0 else None
+            return latest_release[0] if self._compare_versions(latest_release[0], current_version) > 0 else None
 
         logging.debug(f"Checking for updates for {action_name}@{current_version}: Getting repo {action_name}")
-        repo: Repository = self.client.get_repo(action_name)
+        try:
+            repo: Repository = self._get_repo(action_name)
+        except ValueError as e:
+            return None
         logging.info(f"Getting latest release for repository: {action_name}")
         latest_release: GitRelease
         try:
@@ -125,25 +136,27 @@ class GithubActionsTools(object):
 
     def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
         workflow_paths = self._get_github_workflow_filenames(repo_name)
-        res = dict()
-        all_actions = set()
-        all_actions_no_version = set()  # actions without version, e.g., actions/checkout
+        res:Dict[str, List[ActionVersion]] = dict()
+        actions_per_path:Dict[str,Set[str]]=dict()  # actions without version, e.g., actions/checkout
         for path in workflow_paths:
             res[path] = list()
             actions = self.get_workflow_action_names(repo_name, path)
-            for action in all_actions:
+            for action in actions:
+                actions_per_path.setdefault(path,set()).add(action)
+        all_actions_no_version = set()
+        for path, actions in actions_per_path.items():
+            for action in actions:
                 if "@" not in action:
                     continue
-                action_name, _ = action.split("@")
-                all_actions_no_version.add(action_name)
-            all_actions = all_actions.union(actions)
+                all_actions_no_version.add(action.split("@")[0])
         logging.info(f"Found {len(all_actions_no_version)} actions in workflows: {", ".join(all_actions_no_version)}")
-        for action in all_actions:
-            if "@" not in action:
-                continue
-            action_name, curr_version = action.split("@")
-            latest_version = self.get_action_latest_release(action)
-            res[path].append(ActionVersion(action_name, curr_version, latest_version))
+        for path, actions in actions_per_path.items():
+            for action in actions:
+                if "@" not in action:
+                    continue
+                action_name, curr_version = action.split("@")
+                latest_version = self.get_action_latest_release(action)
+                res[path].append(ActionVersion(action_name, curr_version, latest_version))
         return res
 
     def get_repo_workflow_names(self, repo_name: str) -> Dict[str, str]:
@@ -184,7 +197,7 @@ class GithubActionsTools(object):
             return
 
         # remote
-        repo: Repository = self.client.get_repo(repo_name)
+        repo: Repository = self._get_repo(repo_name)
         current_content = repo.get_contents(workflow_path)
         res = repo.update_file(
             workflow_path,
@@ -205,7 +218,7 @@ class GithubActionsTools(object):
             click.secho(f"{repo_name} is not a local repo and does not start with owner/repo", fg="red", err=True)
             raise ValueError(f"{repo_name} is not a local repo and does not start with owner/repo")
         # Remote
-        repo: Repository = self.client.get_repo(repo_name)
+        repo: Repository = self._get_repo(repo_name)
         self._wf_cache[repo_name] = {wf.path: wf for wf in repo.get_workflows() if wf.path.startswith(".github/")}
         return set(self._wf_cache[repo_name].keys())
 
@@ -228,8 +241,8 @@ class GithubActionsTools(object):
                 f"possible values: {workflow_paths}",
                 err=True,
             )
-        repo: Repository = self.client.get_repo(repo_name)
         try:
+            repo: Repository = self._get_repo(repo_name)
             workflow_content = repo.get_contents(workflow_path)
         except UnknownObjectException:
             raise FileNotFoundError(f"Workflow not found in repository: {repo_name}, path: {workflow_path}")
