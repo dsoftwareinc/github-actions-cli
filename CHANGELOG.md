@@ -1,5 +1,9 @@
 ## v1.2.1
 
+### 🚀 Features
+
+- Support for updating major action versions only with `--major-only` flag.
+
 ## v1.1.6
 
 ### 🐛 Bug Fixes
