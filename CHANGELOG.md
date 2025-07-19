@@ -1,6 +1,10 @@
 ## v1.2.2
+
 ### 🐛 Bug Fixes
+
 - fix: Update versions
+- fix: error when repository is not found
+
 ## v1.2.1
 
 ### 🚀 Features
