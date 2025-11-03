@@ -130,7 +130,7 @@ class GithubActionsTools(object):
 
     def get_workflow_action_names(self, repo_name: str, workflow_path: str) -> Set[str]:
         workflow_content = self._get_workflow_file_content(repo_name, workflow_path)
-        workflow = yaml.load(workflow_content, Loader=yaml.CLoader)
+        workflow = yaml.safe_load(workflow_content)
         res = set()
         for job in workflow.get("jobs", dict()).values():
             for step in job.get("steps", list()):
@@ -169,7 +169,7 @@ class GithubActionsTools(object):
         for path in workflow_paths:
             try:
                 content = self._get_workflow_file_content(repo_name, path)
-                yaml_content = yaml.load(content, Loader=yaml.CLoader)
+                yaml_content = yaml.safe_load(content)
                 res[path] = yaml_content.get("name", path)
             except FileNotFoundError as ex:
                 logging.warning(ex)
