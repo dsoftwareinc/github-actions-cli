@@ -28,7 +28,9 @@ def _is_sha(current_version: str) -> bool:
 
 class GithubActionsTools(object):
     _wf_cache: dict[str, dict[str, Any]] = dict()  # repo_name -> [path -> workflow/yaml]
-    __actions_latest_release: dict[str, Tuple[str, datetime]] = dict()  # action_name@current_release -> latest_release_tag
+    __actions_latest_release: dict[str, Tuple[str, datetime]] = (
+        dict()
+    )  # action_name@current_release -> latest_release_tag
 
     def __init__(self, github_token: str, update_major_version_only: bool = False):
         self.client = Github(login_or_token=github_token)
@@ -73,7 +75,7 @@ class GithubActionsTools(object):
 
     def get_action_latest_release(self, uses_tag_value: str) -> Optional[str]:
         """Check whether an action has an update, and return the latest version if it does syntax for uses:
-           https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_iduses
+        https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_iduses
         """
         if "@" not in uses_tag_value:
             return None
@@ -82,7 +84,9 @@ class GithubActionsTools(object):
             latest_release = self.__actions_latest_release[action_name]
             logging.debug(f"Found in cache {action_name}: {latest_release}")
             if _is_sha(current_version):
-                logging.debug(f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer")
+                logging.debug(
+                    f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer"
+                )
                 now = datetime.now(timezone.utc)
                 release_time = latest_release[1]
                 if release_time.tzinfo is None:
@@ -94,7 +98,7 @@ class GithubActionsTools(object):
         logging.debug(f"Checking for updates for {action_name}@{current_version}: Getting repo {action_name}")
         try:
             repo: Repository = self._get_repo(action_name)
-        except ValueError as e:
+        except ValueError:
             return None
         logging.info(f"Getting latest release for repository: {action_name}")
         latest_release: GitRelease
@@ -108,13 +112,20 @@ class GithubActionsTools(object):
 
         if _is_sha(current_version):
             logging.debug(
-                f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer")
+                f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer"
+            )
             current_version_commit = repo.get_commit(current_version)
             if latest_release.last_modified_datetime > current_version_commit.last_modified_datetime:
-                self.__actions_latest_release[action_name] = self._fix_version(latest_release.tag_name), latest_release.last_modified_datetime
+                self.__actions_latest_release[action_name] = (
+                    self._fix_version(latest_release.tag_name),
+                    latest_release.last_modified_datetime,
+                )
                 return latest_release.tag_name
         if self._compare_versions(latest_release.tag_name, current_version) > 0:
-            self.__actions_latest_release[action_name] = self._fix_version(latest_release.tag_name), latest_release.last_modified_datetime
+            self.__actions_latest_release[action_name] = (
+                self._fix_version(latest_release.tag_name),
+                latest_release.last_modified_datetime,
+            )
             return latest_release.tag_name
         return None
 
@@ -140,13 +151,13 @@ class GithubActionsTools(object):
 
     def get_repo_actions_latest(self, repo_name: str) -> Dict[str, List[ActionVersion]]:
         workflow_paths = self._get_github_workflow_filenames(repo_name)
-        res:Dict[str, List[ActionVersion]] = dict()
-        actions_per_path:Dict[str,Set[str]]=dict()  # actions without version, e.g., actions/checkout
+        res: Dict[str, List[ActionVersion]] = dict()
+        actions_per_path: Dict[str, Set[str]] = dict()  # actions without version, e.g., actions/checkout
         for path in workflow_paths:
             res[path] = list()
             actions = self.get_workflow_action_names(repo_name, path)
             for action in actions:
-                actions_per_path.setdefault(path,set()).add(action)
+                actions_per_path.setdefault(path, set()).add(action)
         all_actions_no_version = set()
         for path, actions in actions_per_path.items():
             for action in actions:
@@ -176,11 +187,11 @@ class GithubActionsTools(object):
         return res
 
     def update_actions(
-            self,
-            repo_name: str,
-            workflow_path: str,
-            updates: List[ActionVersion],
-            commit_msg: str,
+        self,
+        repo_name: str,
+        workflow_path: str,
+        updates: List[ActionVersion],
+        commit_msg: str,
     ) -> None:
         workflow_content = self._get_workflow_file_content(repo_name, workflow_path)
         if isinstance(workflow_content, bytes):

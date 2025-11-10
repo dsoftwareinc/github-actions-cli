@@ -1,3 +1,11 @@
+## v1.2.3
+
+- Migrate to uv
+
+### 🐛 Bug Fixes
+
+- fix: Comparison can be timezone aware
+
 ## v1.2.2
 
 ### 🐛 Bug Fixes

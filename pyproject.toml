@@ -1,56 +1,60 @@
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-github-actions-cli = "gha_cli.cli:cli"
-#github-scanner = "gha_cli.scanner:cli"
-
-[tool.poetry]
+[project]
 name = "github-actions-cli"
-version = "1.2.2"
+version = "1.2.3"
 description = "GitHub Actions CLI - allows updating workflows, etc."
+authors = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
+requires-python = "~=3.10"
 readme = "README.md"
-keywords = ["GitHub Actions", "CLI"]
-packages = [
-    { include = "gha_cli" },
-]
-
-authors = [
-    "Daniel Moran <daniel@moransoftware.ca>",
-]
-maintainers = [
-    "Daniel Moran <daniel@moransoftware.ca>",
-]
 license = "BSD-3-Clause"
-classifiers = [
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: BSD License',
-    'Operating System :: OS Independent',
-    'Programming Language :: Python',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
-    'Topic :: Software Development :: Libraries :: Python Modules',
+maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
+keywords = [
+    "GitHub Actions",
+    "CLI",
 ]
-homepage = "https://github.com/dsoftwareinc/github-actions-cli"
-documentation = "https://github.com/dsoftwareinc/github-actions-cli"
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "pygithub~=2.6",
+    "pyyaml>=6,<7",
+    "click~=8.2",
+    "cffi>=1.17.1,<2",
+    "coloredlogs>=15,<16",
+]
 
-[tool.poetry.urls]
+[project.urls]
+Homepage = "https://github.com/dsoftwareinc/github-actions-cli"
+Documentation = "https://github.com/dsoftwareinc/github-actions-cli"
 "Bug Tracker" = "https://github.com/dsoftwareinc/github-actions-cli/issues"
-"Funding" = "https://github.com/sponsors/cunla"
+Funding = "https://github.com/sponsors/cunla"
 
-[tool.poetry.dependencies]
-python = "^3.10"
-pygithub = "^2.6"
-pyyaml = "^6"
-click = "^8.2"
-cffi = "^1.17.1"
-coloredlogs = "^15"
+[project.scripts]
+github-actions-cli = "gha_cli.cli:cli"
 
-[tool.poetry.group.dev.dependencies]
-poetry = "^2.1"
-ruff = "^0.12"
+[dependency-groups]
+dev = [
+    "poetry~=2.1",
+    "ruff>=0.12,<0.13",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["gha_cli"]
+
+[tool.hatch.build.targets.wheel]
+include = ["gha_cli"]
 
 [tool.ruff]
 line-length = 120
