@@ -2,7 +2,7 @@
 import logging
 import os
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Set, Dict, Union, Any, Tuple
 
 import click
@@ -83,7 +83,11 @@ class GithubActionsTools(object):
             logging.debug(f"Found in cache {action_name}: {latest_release}")
             if _is_sha(current_version):
                 logging.debug(f"Current version for {action_name} is a SHA: {current_version}, checking whether latest release is newer")
-                if latest_release[1] > datetime.now():
+                now = datetime.now(timezone.utc)
+                release_time = latest_release[1]
+                if release_time.tzinfo is None:
+                    release_time = release_time.replace(tzinfo=timezone.utc)
+                if release_time > now:
                     return latest_release[0]
             return latest_release[0] if self._compare_versions(latest_release[0], current_version) > 0 else None
 
@@ -126,7 +130,7 @@ class GithubActionsTools(object):
 
     def get_workflow_action_names(self, repo_name: str, workflow_path: str) -> Set[str]:
         workflow_content = self._get_workflow_file_content(repo_name, workflow_path)
-        workflow = yaml.load(workflow_content, Loader=yaml.CLoader)
+        workflow = yaml.safe_load(workflow_content)
         res = set()
         for job in workflow.get("jobs", dict()).values():
             for step in job.get("steps", list()):
@@ -149,7 +153,7 @@ class GithubActionsTools(object):
                 if "@" not in action:
                     continue
                 all_actions_no_version.add(action.split("@")[0])
-        logging.info(f"Found {len(all_actions_no_version)} actions in workflows: {", ".join(all_actions_no_version)}")
+        logging.info(f"Found {len(all_actions_no_version)} actions in workflows: {', '.join(all_actions_no_version)}")
         for path, actions in actions_per_path.items():
             for action in actions:
                 if "@" not in action:
@@ -165,7 +169,7 @@ class GithubActionsTools(object):
         for path in workflow_paths:
             try:
                 content = self._get_workflow_file_content(repo_name, path)
-                yaml_content = yaml.load(content, Loader=yaml.CLoader)
+                yaml_content = yaml.safe_load(content)
                 res[path] = yaml_content.get("name", path)
             except FileNotFoundError as ex:
                 logging.warning(ex)
