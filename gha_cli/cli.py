@@ -79,7 +79,9 @@ class GithubActionsTools(object):
         """
         if "@" not in uses_tag_value:
             return None
-        action_name, current_version = uses_tag_value.split("@")
+        action_name, current_version = uses_tag_value.split("@", maxsplit=1)
+        # GitHub repos are owner/repo; action paths like owner/repo/sub-action need truncation
+        repo_name = "/".join(action_name.split("/")[:2])
         if action_name in self.__actions_latest_release:
             latest_release = self.__actions_latest_release[action_name]
             logging.debug(f"Found in cache {action_name}: {latest_release}")
@@ -95,12 +97,12 @@ class GithubActionsTools(object):
                     return latest_release[0]
             return latest_release[0] if self._compare_versions(latest_release[0], current_version) > 0 else None
 
-        logging.debug(f"Checking for updates for {action_name}@{current_version}: Getting repo {action_name}")
+        logging.debug(f"Checking for updates for {action_name}@{current_version}: Getting repo {repo_name}")
         try:
-            repo: Repository = self._get_repo(action_name)
+            repo: Repository = self._get_repo(repo_name)
         except ValueError:
             return None
-        logging.info(f"Getting latest release for repository: {action_name}")
+        logging.info(f"Getting latest release for repository: {repo_name}")
         latest_release: GitRelease
         try:
             latest_release = repo.get_latest_release()

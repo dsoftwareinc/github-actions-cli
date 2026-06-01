@@ -201,6 +201,19 @@ class TestGetActionLatestRelease:
         # get_repo called only once; second call used the cache
         tools.client.get_repo.assert_called_once()
 
+    def test_action_with_sub_path_queries_owner_repo(self, tools):
+        """actions/upload-artifact/merge@v3 should query the actions/upload-artifact repo."""
+        tools.client.get_repo.return_value.get_latest_release.return_value = self._mock_release("v4.0.0")
+        result = tools.get_action_latest_release("actions/upload-artifact/merge@v3.0.0")
+        assert result == "v4.0.0"
+        tools.client.get_repo.assert_called_once_with("actions/upload-artifact")
+
+    def test_action_with_sub_path_cache_uses_full_name(self, tools):
+        """Cache key is the full action name, not the truncated owner/repo."""
+        tools.client.get_repo.return_value.get_latest_release.return_value = self._mock_release("v4.0.0")
+        tools.get_action_latest_release("actions/upload-artifact/merge@v3.0.0")
+        assert "actions/upload-artifact/merge" in GithubActionsTools._GithubActionsTools__actions_latest_release
+
     def test_major_only_returns_major_tag(self, tools_major_only):
         tools_major_only.client.get_repo.return_value.get_latest_release.return_value = MagicMock(
             tag_name="v4.1.0",
