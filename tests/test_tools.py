@@ -366,6 +366,34 @@ class TestUpdateActions:
         assert "actions/checkout@v4.0.0" in call_args[2]
 
 
+class TestUtf8Encoding:
+    """Regression tests for Windows cp1252 encoding crash (issue #5)."""
+
+    def test_reads_utf8_workflow_file(self, tools, tmp_path):
+        (tmp_path / ".git").mkdir()
+        workflows_dir = tmp_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        utf8_workflow = "name: Ünïcödé CI\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n"
+        wf_path = workflows_dir / "ci.yml"
+        wf_path.write_text(utf8_workflow, encoding="utf-8")
+
+        content = tools._get_workflow_file_content(str(tmp_path), str(wf_path))
+        assert "Ünïcödé" in content
+
+    def test_writes_utf8_workflow_file(self, tools, tmp_path):
+        (tmp_path / ".git").mkdir()
+        workflows_dir = tmp_path / ".github" / "workflows"
+        workflows_dir.mkdir(parents=True)
+        wf_path = workflows_dir / "ci.yml"
+        wf_path.write_text(SAMPLE_WORKFLOW, encoding="utf-8")
+
+        updates = [ActionVersion("actions/checkout", "v3.5.0", "v4.0.0")]
+        tools.update_actions(str(tmp_path), str(wf_path), updates, "chore: update")
+
+        written = wf_path.read_text(encoding="utf-8")
+        assert "actions/checkout@v4.0.0" in written
+
+
 class TestGetRepoWorkflowNames:
     def test_local_repo_extracts_name_from_yaml(self, tools, local_repo):
         names = tools.get_repo_workflow_names(str(local_repo))

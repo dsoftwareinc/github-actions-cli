@@ -8,7 +8,7 @@ from typing import Optional, List, Set, Dict, Union, Any, Tuple
 import click
 import coloredlogs
 import yaml
-from github import Github, UnknownObjectException, GitRelease
+from github import Auth, Github, UnknownObjectException, GitRelease
 from github.Organization import Organization
 from github.PaginatedList import PaginatedList
 from github.Repository import Repository
@@ -32,8 +32,8 @@ class GithubActionsTools(object):
         dict()
     )  # action_name@current_release -> latest_release_tag
 
-    def __init__(self, github_token: str, update_major_version_only: bool = False):
-        self.client = Github(login_or_token=github_token)
+    def __init__(self, github_token: Optional[str], update_major_version_only: bool = False):
+        self.client = Github(auth=Auth.Token(github_token) if github_token else None)
         self._update_major_version_only = update_major_version_only
 
     def _get_repo(self, repo_name: str) -> Repository:
@@ -209,7 +209,7 @@ class GithubActionsTools(object):
 
     def _update_workflow_content(self, repo_name: str, workflow_path: str, workflow_content: str, commit_msg: str):
         if self.is_local_repo(repo_name):
-            with open(workflow_path, "w") as f:
+            with open(workflow_path, "w", encoding="utf-8") as f:
                 f.write(workflow_content)
             click.secho(f"Updated workflow in {workflow_path}", fg="cyan")
             return
@@ -250,7 +250,7 @@ class GithubActionsTools(object):
                     f"possible values: {workflow_paths}",
                     err=True,
                 )
-            with open(workflow_path) as f:
+            with open(workflow_path, encoding="utf-8") as f:
                 return f.read()
 
         if workflow_path not in workflow_paths:

@@ -4,35 +4,32 @@ build-backend = "hatchling.build"
 
 [project]
 name = "github-actions-cli"
-version = "1.2.3"
+version = "1.2.4"
 description = "GitHub Actions CLI - allows updating workflows, etc."
 authors = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
 requires-python = "~=3.10"
 readme = "README.md"
 license = "BSD-3-Clause"
 maintainers = [{ name = "Daniel Moran", email = "daniel@moransoftware.ca" }]
-keywords = [
-    "GitHub Actions",
-    "CLI",
-]
+keywords = ["GitHub Actions", "CLI"]
 classifiers = [
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Topic :: Software Development :: Libraries :: Python Modules",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "pygithub~=2.6",
-    "pyyaml>=6,<7",
-    "click~=8.2",
-    "cffi>=1.17.1,<2",
-    "coloredlogs>=15,<16",
+  "pygithub~=2.6",
+  "pyyaml>=6,<7",
+  "click~=8.2",
+  "cffi>=1.17.1,<2",
+  "coloredlogs>=15,<16",
 ]
 
 [project.urls]
@@ -45,12 +42,7 @@ Funding = "https://github.com/sponsors/cunla"
 github-actions-cli = "gha_cli.cli:cli"
 
 [dependency-groups]
-dev = [
-    "poetry~=2.1",
-    "pytest>=8,<9",
-    "pytest-mock>=3,<4",
-    "ruff>=0.12,<0.13",
-]
+dev = ["poetry~=2.1", "pytest>=8,<9", "pytest-mock>=3,<4", "ruff>=0.12,<0.13"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -63,18 +55,10 @@ include = ["gha_cli"]
 
 [tool.ruff]
 line-length = 120
-exclude = [
-    ".git",
-    ".github",
-    "__pycache__",
-    "dist",
-    "venv",
-    ".venv"
-]
+exclude = [".git", ".github", "__pycache__", "dist", "venv", ".venv"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
-

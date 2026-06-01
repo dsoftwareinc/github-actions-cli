@@ -1,3 +1,16 @@
+## v1.2.4
+
+### 🐛 Bug Fixes
+
+- fix: Support action names with sub-paths (e.g. `actions/upload-artifact/merge`) #8
+- fix: UnicodeDecodeError reading workflow files on Windows — always open with UTF-8 encoding #5
+- fix: UnboundLocalError when a repository has no releases
+- fix: PyGitHub deprecation warning — use `Auth.Token` instead of `login_or_token`
+
+### 🧪 Tests
+
+- Add test suite with pytest and pytest-mock
+
 ## v1.2.3
 
 - Migrate to uv
