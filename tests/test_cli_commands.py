@@ -64,13 +64,16 @@ class TestListActions:
         assert "actions/checkout@v3.5.0" in result.output
         assert "actions/setup-python@v4.0.0" in result.output
 
-    def test_does_not_list_run_steps(self, runner, local_repo):
+    def test_lists_only_uses_steps_not_run_steps(self, runner, local_repo):
         path = str(local_repo / ".github" / "workflows" / "ci.yml")
         result = runner.invoke(
             cli,
             ["--repo", str(local_repo), "--github-token", "fake", "list-actions", path],
         )
-        assert "pytest" not in result.output
+        # Only lines containing "@" are action references; "run: pytest" step is excluded
+        action_lines = [line for line in result.output.splitlines() if "@" in line]
+        assert len(action_lines) == 2
+        assert all("actions/" in line for line in action_lines)
 
 
 class TestUpdateActionsCommand:

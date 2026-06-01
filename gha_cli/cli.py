@@ -109,6 +109,7 @@ class GithubActionsTools(object):
                 return None
         except UnknownObjectException:
             logging.warning(f"No releases found for repository: {action_name}")
+            return None
 
         if _is_sha(current_version):
             logging.debug(

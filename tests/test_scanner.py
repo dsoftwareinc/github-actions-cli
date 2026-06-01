@@ -142,7 +142,8 @@ class TestOrg:
 
     def test_repositories_field_excluded_from_csv_header(self):
         org = Org.from_github_org(_make_mock_gh_org())
-        assert "repositories" not in org.csv_header()
+        # "repositories" must not appear as a standalone column (repositories_count is allowed)
+        assert "repositories" not in org.csv_header().split(",")
 
     def test_csv_header_has_expected_columns(self):
         org = Org.from_github_org(_make_mock_gh_org())
