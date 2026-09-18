@@ -33,10 +33,11 @@ GitHub Actions CLI, scanning repo in /path/to/repo
     actions/checkout          v2 ==> v3
 ```
 
-Actions with an `==>` have a newer version available. To apply the updates, add `--update`:
+Actions with an `==>` have a newer version available. To apply the updates, name the
+`update-actions` command and pass `--update`:
 
 ```shell
-github-actions-cli --update
+github-actions-cli update-actions --update
 ```
 
 ## GitHub token
@@ -56,12 +57,15 @@ Writing changes to a **remote** repository also requires the token to have commi
 
 Lists actions that have updates available. Pass `--update` (`-u`) to apply the changes.
 
+This is the command that runs when you invoke `github-actions-cli` with no subcommand, but its
+options belong to the subcommand: to pass `--update` you have to spell out `update-actions`.
+
 ```shell
 # Check for updates in the current directory
 github-actions-cli
 
 # Apply updates to local workflow files
-github-actions-cli --update
+github-actions-cli update-actions --update
 
 # Check and update a remote repository
 github-actions-cli --repo cunla/fakeredis update-actions --update
@@ -122,7 +126,7 @@ github-actions-cli analyze-orgs --exclude my-org --exclude another-org
 ## Global options
 
 ```text
-Usage: github-actions-cli [OPTIONS] COMMAND [ARGS]...
+Usage: github-actions-cli [OPTIONS] [COMMAND] [ARGS]...
 
 Options:
   --repo TEXT           Repository to scan. Accepts a local path or
